@@ -54,13 +54,17 @@ app.post('/webhook', async (req, res) => {
     await sendMessage(from, reply);
 
     // Also send voice reply
-    try {
-      const audioBuffer = await textToSpeech(reply);
-      await sendAudioMessage(from, audioBuffer);
-    } catch (voiceErr) {
-      console.error('Voice reply failed:', voiceErr.message);
-      // silent fail — text reply already sent
-    }
+   try {
+  console.log('🎤 Generating voice reply...');
+  const audioBuffer = await textToSpeech(reply);
+  console.log('🎤 Audio generated, size:', audioBuffer.length);
+  await sendAudioMessage(from, audioBuffer);
+  console.log('🎤 Voice reply sent successfully');
+} catch (voiceErr) {
+  console.error('Voice reply failed — status:', voiceErr.response?.status);
+  console.error('Voice reply failed — data:', JSON.stringify(voiceErr.response?.data));
+  console.error('Voice reply failed — message:', voiceErr.message);
+}
 
   } catch (err) {
     console.error('Webhook error:', err.message);
