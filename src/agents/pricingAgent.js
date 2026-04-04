@@ -35,7 +35,7 @@ Based on ALL of the above, tell the vendor:
 2. Restock now? Yes/No and one sentence why
 3. One practical tip for selling this product today
 
-Use phrases like "Saka...", "Zvino...", "Handei..." naturally mixed with English.
+
   `;
 
   const response = await askGemini(prompt);
