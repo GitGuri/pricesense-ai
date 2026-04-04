@@ -1,0 +1,30 @@
+{
+  "name": "pricesense-ai",
+  "version": "1.0.0",
+  "description": "GDG Hackathon project to assist Zim Local vendors , on how to check and  predict markert prices to be able to make insightful and business concious decisions , making use of whatsapp to parse through the messages and gemini AI",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GitGuri/pricesense-ai.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/GitGuri/pricesense-ai/issues"
+  },
+  "homepage": "https://github.com/GitGuri/pricesense-ai#readme",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.14.0",
+    "dotenv": "^17.4.0",
+    "express": "^5.2.1",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
