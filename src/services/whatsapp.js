@@ -31,4 +31,45 @@ async function downloadMedia(mediaId) {
   };
 }
 
-module.exports = { sendMessage, downloadMedia };
+const FormData = require('form-data');
+
+async function sendAudioMessage(to, audioBuffer) {
+  // Step 1: upload media
+  const form = new FormData();
+  form.append('file', audioBuffer, {
+    filename: 'reply.mp3',
+    contentType: 'audio/mpeg'
+  });
+  form.append('messaging_product', 'whatsapp');
+  form.append('type', 'audio/mpeg');
+
+  const { data: uploadData } = await axios.post(
+    `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/media`,
+    form,
+    {
+      headers: {
+        ...form.getHeaders(),
+        Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`
+      }
+    }
+  );
+
+  // Step 2: send audio message
+  await axios.post(
+    `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+    {
+      messaging_product: 'whatsapp',
+      to,
+      type: 'audio',
+      audio: { id: uploadData.id }
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+}
+
+module.exports = { sendMessage, downloadMedia, sendAudioMessage };

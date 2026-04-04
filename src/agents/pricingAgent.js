@@ -1,15 +1,18 @@
 const { askGemini } = require('../services/gemini');
 const { enrichLocation } = require('../services/location');
+const { scrapeMarketData } = require('../services/scraper');
 const pool = require('../db');
 
 async function getPriceRecommendation(product, location, phone) {
-  const locationData = await enrichLocation(location);
-
-  const { rows: history } = await pool.query(
-    `SELECT price, recorded_at FROM market_prices
-     WHERE product ILIKE $1 ORDER BY recorded_at DESC LIMIT 5`,
-    [product]
-  );
+  const [locationData, liveMarketData, { rows: history }] = await Promise.all([
+    enrichLocation(location),
+    scrapeMarketData(product),
+    pool.query(
+      `SELECT price, recorded_at FROM market_prices
+       WHERE product ILIKE $1 ORDER BY recorded_at DESC LIMIT 5`,
+      [product]
+    )
+  ]);
 
   const historyText = history.length > 0
     ? history.map(r => `$${r.price} on ${new Date(r.recorded_at).toDateString()}`).join(', ')
@@ -17,18 +20,22 @@ async function getPriceRecommendation(product, location, phone) {
 
   const prompt = `
 You are PriceSense AI — a pricing assistant for informal market vendors in Zimbabwe.
-Be brief, practical, and friendly. Use simple English.
+Reply in a natural mix of Shona and English (like how vendors speak in Harare markets).
+Be brief, warm, and practical. Maximum 80 words.
 
 Product: ${product}
 Market: ${locationData.display_name}
-Recent price history: ${historyText}
+Price history from our database: ${historyText}
 
-Based on this, respond with:
+Live market intelligence scraped from Zimbabwean news and market sites:
+${liveMarketData}
+
+Based on ALL of the above, tell the vendor:
 1. Suggested selling price range in USD
-2. Whether to restock now (Yes/No) and why in one sentence
-3. One short market tip for this product
+2. Restock now? Yes/No and one sentence why
+3. One practical tip for selling this product today
 
-Keep the whole reply under 100 words.
+Use phrases like "Saka...", "Zvino...", "Handei..." naturally mixed with English.
   `;
 
   const response = await askGemini(prompt);

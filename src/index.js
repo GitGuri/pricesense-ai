@@ -1,7 +1,8 @@
 const express = require('express');
 const { getPriceRecommendation } = require('./agents/pricingAgent');
-const { sendMessage, downloadMedia } = require('./services/whatsapp');
+const { sendMessage, downloadMedia, sendAudioMessage } = require('./services/whatsapp');
 const { transcribeAudio } = require('./services/gemini');
+const { textToSpeech } = require('./services/voice');
 const { parseMessage } = require('./utils/messageParser');
 require('dotenv').config();
 
@@ -19,7 +20,7 @@ app.get('/webhook', (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
-  res.sendStatus(200); // always ack immediately
+  res.sendStatus(200);
 
   try {
     const entry = req.body.entry?.[0]?.changes?.[0]?.value;
@@ -28,21 +29,38 @@ app.post('/webhook', async (req, res) => {
 
     const from = msg.from;
     let text = '';
+    let isVoice = false;
 
     if (msg.type === 'text') {
       text = msg.text.body;
     } else if (msg.type === 'audio') {
+      isVoice = true;
       const { base64, mimeType } = await downloadMedia(msg.audio.id);
       text = await transcribeAudio(base64, mimeType);
+      await sendMessage(from, `🎤 Ndakanzwa: "${text}"\n⏳ Ndiri kutarisa mutengo...`);
     } else {
       return;
     }
 
     const { product, location } = parseMessage(text);
-    await sendMessage(from, `⏳ Checking prices for *${product}* in ${location}...`);
+
+    if (!isVoice) {
+      await sendMessage(from, `⏳ Ndiri kutarisa mutengo we${product} mu${location}...`);
+    }
 
     const reply = await getPriceRecommendation(product, location, from);
+
+    // Always send text reply
     await sendMessage(from, reply);
+
+    // Also send voice reply
+    try {
+      const audioBuffer = await textToSpeech(reply);
+      await sendAudioMessage(from, audioBuffer);
+    } catch (voiceErr) {
+      console.error('Voice reply failed:', voiceErr.message);
+      // silent fail — text reply already sent
+    }
 
   } catch (err) {
     console.error('Webhook error:', err.message);
