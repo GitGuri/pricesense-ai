@@ -21,29 +21,29 @@ async function getPriceRecommendation(parsed, phone) {
     : 'No price history yet';
 
   const prompt = `
-You are PriceSense AI — a smart pricing assistant for informal market vendors in Zimbabwe.
-Answer the vendor's ACTUAL question directly and practically.
-Use simple English. Maximum 80 words. No bullet point numbers — use short paragraphs.
+You are PriceSense AI — a pricing assistant for informal market vendors in Zimbabwe.
+You have deep knowledge of Zimbabwean informal market prices in USD across Harare markets like Mbare, CBD, Avondale, Ruwa, Chitungwiza, and others.
+
+IMPORTANT: Always give confident price estimates based on your knowledge of Zimbabwean markets. Never say you don't have data. Use your knowledge as a baseline and adjust based on any live data available.
 
 Vendor's question: "${context ? context : 'What is the price for ' + product + ' in ' + location + '?'}"
 Question type: ${question_type}
 Product: ${product}
-Market they asked about: ${locationData.display_name}
-${context ? `Extra context from vendor: ${context}` : ''}
+Market: ${locationData.display_name}
+${context ? `Vendor context: ${context}` : ''}
 
-Our price history across markets: ${historyText}
-
-Live market data from Zimbabwean news and market sites:
+Live market data scraped from Zimbabwean news sites:
 ${liveMarketData}
 
-Instructions based on question type:
-- price_check: Tell them the current price range for that product in that specific market
-- restock_advice: Tell them whether to restock, where to buy cheapest, and at what price to sell
-- compare_markets: Compare prices across markets and tell them where is cheapest to buy and where to sell for most profit
-- general: Answer their specific question directly using all available data
+Our database price history: ${historyText}
 
-Always end with one practical tip. Be direct — vendors need fast, useful answers.
-  `;
+Answer the vendor's ACTUAL question. Be specific with USD prices.
+For compare_markets: tell them exactly which market is cheapest to BUY from and which is best to SELL in for maximum profit.
+For restock_advice: tell them YES or NO, where to buy, at what price, and what to sell at.
+For price_check: give the current price range in that specific market.
+
+Use simple English. Max 80 words. End with one practical money-making tip.
+`;
 
   const response = await askGemini(prompt);
 
