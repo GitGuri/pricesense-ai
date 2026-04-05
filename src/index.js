@@ -14,8 +14,8 @@ require('dotenv').config();
 
 const app = express();
 app.use(express.json());
-app.use('/dashboard-data', dashboardRouter);
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/dashboard-data', dashboardRouter);
 
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
@@ -103,7 +103,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => res.send('PriceSense AI is running ✅'));
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
