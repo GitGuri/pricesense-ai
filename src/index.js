@@ -4,6 +4,7 @@ const { sendMessage, downloadMedia, sendAudioMessage } = require('./services/wha
 const { transcribeAudio } = require('./services/gemini');
 const { textToSpeech } = require('./services/voice');
 const { parseMessage } = require('./utils/messageParser');
+const pool = require('./db');
 require('dotenv').config();
 
 const app = express();
@@ -18,6 +19,23 @@ app.get('/webhook', (req, res) => {
   }
   res.sendStatus(403);
 });
+
+async function getConversationHistory(phone) {
+  const { rows } = await pool.query(
+    `SELECT role, message FROM conversations
+     WHERE phone_number = $1
+     ORDER BY created_at DESC LIMIT 10`,
+    [phone]
+  );
+  return rows.reverse();
+}
+
+async function saveMessage(phone, role, message) {
+  await pool.query(
+    `INSERT INTO conversations (phone_number, role, message) VALUES ($1, $2, $3)`,
+    [phone, role, message]
+  );
+}
 
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200);
@@ -37,33 +55,41 @@ app.post('/webhook', async (req, res) => {
       isVoice = true;
       const { base64, mimeType } = await downloadMedia(msg.audio.id);
       text = await transcribeAudio(base64, mimeType);
-      await sendMessage(from, `🎤 I heard: "${text}"\n⏳ Checking prices...`);
+      await sendMessage(from, `🎤 I heard: "${text}"\n⏳ Checking now...`);
     } else {
       return;
     }
 
-    const parsed = await parseMessage(text);
+    // Save user message to history
+    await saveMessage(from, 'user', text);
+
+    // Get conversation history for context
+    const history = await getConversationHistory(from);
+
+    const parsed = await parseMessage(text, history);
 
     if (!isVoice) {
-       await sendMessage(from, `⏳ Checking prices for *${parsed.product}* in ${parsed.location}...`);
+      await sendMessage(from, `⏳ Checking prices for *${parsed.product || 'your query'}* in ${parsed.location || 'Harare'}...`);
     }
 
-const reply = await getPriceRecommendation(parsed, from);
-    // Always send text reply
+    const reply = await getPriceRecommendation(parsed, from, history);
+
+    // Save AI reply to history
+    await saveMessage(from, 'assistant', reply);
+
+    // Send text reply
     await sendMessage(from, reply);
 
-    // Also send voice reply
-   try {
-  console.log('🎤 Generating voice reply...');
-  const audioBuffer = await textToSpeech(reply);
-  console.log('🎤 Audio generated, size:', audioBuffer.length);
-  await sendAudioMessage(from, audioBuffer);
-  console.log('🎤 Voice reply sent successfully');
-} catch (voiceErr) {
-  console.error('Voice reply failed — status:', voiceErr.response?.status);
-  console.error('Voice reply failed — data:', JSON.stringify(voiceErr.response?.data));
-  console.error('Voice reply failed — message:', voiceErr.message);
-}
+    // Send voice reply
+    try {
+      console.log('🎤 Generating voice reply...');
+      const audioBuffer = await textToSpeech(reply);
+      console.log('🎤 Audio generated, size:', audioBuffer.length);
+      await sendAudioMessage(from, audioBuffer);
+      console.log('🎤 Voice reply sent successfully');
+    } catch (voiceErr) {
+      console.error('Voice reply failed:', voiceErr.response?.status, JSON.stringify(voiceErr.response?.data));
+    }
 
   } catch (err) {
     console.error('Webhook error:', err.message);
