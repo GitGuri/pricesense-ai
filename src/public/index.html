@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PriceSense AI — Live Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+    header {
+      background: linear-gradient(135deg, #1e40af, #7c3aed);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 24px; font-weight: 700; color: white; }
+    header span { font-size: 13px; color: rgba(255,255,255,0.7); }
+    .live-dot {
+      width: 8px; height: 8px; background: #22c55e;
+      border-radius: 50%; display: inline-block;
+      margin-right: 6px; animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+    .container { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+    .scorecards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #334155;
+    }
+    .scorecard .label {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .scorecard .value {
+      font-size: 36px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+    .scorecard .sublabel {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .chart-container { position: relative; height: 260px; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      border-bottom: 1px solid #334155;
+    }
+    td {
+      padding: 10px 12px;
+      font-size: 13px;
+      border-bottom: 1px solid #1e293b;
+      color: #cbd5e1;
+    }
+    tr:hover td { background: #1e293b; }
+    .badge {
+      background: #1e40af22;
+      color: #38bdf8;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+    }
+    .refresh-btn {
+      background: #1e40af;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .refresh-btn:hover { background: #2563eb; }
+    @media (max-width: 768px) {
+      .scorecards { grid-template-columns: repeat(2, 1fr); }
+      .charts-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🧠 PriceSense AI</h1>
+    <div style="margin-top:4px">
+      <span class="live-dot"></span>
+      <span>Live Dashboard — Zimbabwe Informal Markets</span>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span id="last-updated" style="font-size:12px;color:rgba(255,255,255,0.5)"></span>
+    <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Scorecards -->
+  <div class="scorecards">
+    <div class="card scorecard">
+      <div class="label">Vendors Served</div>
+      <div class="value" id="total-vendors">—</div>
+      <div class="sublabel">Unique phone numbers</div>
+    </div>
+    <div class="card scorecard">
+      <div class="label">Total Queries</div>
+      <div class="value" id="total-queries">—</div>
+      <div class="sublabel">AI responses sent</div>
+    </div>
+    <div class="card scorecard">
+      <div class="label">Products Tracked</div>
+      <div class="value" id="products-tracked">—</div>
+      <div class="sublabel">Across all markets</div>
+    </div>
+    <div class="card scorecard">
+      <div class="label">Markets Covered</div>
+      <div class="value" id="markets-covered">—</div>
+      <div class="sublabel">Zimbabwe locations</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <div class="card">
+      <h3>Most Queried Products</h3>
+      <div class="chart-container">
+        <canvas id="productsChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Average Prices by Market (USD)</h3>
+      <div class="chart-container">
+        <canvas id="marketsChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Queries Table -->
+  <div class="card">
+    <h3>Live Vendor Queries</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Vendor</th>
+          <th>Product</th>
+          <th>Location</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="queries-table">
+        <tr><td colspan="4" style="text-align:center;color:#64748b">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+let productsChart, marketsChart;
+
+async function loadData() {
+  const res = await fetch('/dashboard-data');
+  const data = await res.json();
+
+  // Scorecards
+  document.getElementById('total-vendors').textContent = data.stats.total_vendors || 0;
+  document.getElementById('total-queries').textContent = data.stats.total_queries || 0;
+  document.getElementById('products-tracked').textContent = data.stats.products_tracked || 0;
+  document.getElementById('markets-covered').textContent = data.stats.markets_covered || 0;
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+  // Products chart
+  const productLabels = data.topProducts.map(p => p.product);
+  const productValues = data.topProducts.map(p => parseInt(p.query_count));
+
+  if (productsChart) productsChart.destroy();
+  productsChart = new Chart(document.getElementById('productsChart'), {
+    type: 'bar',
+    data: {
+      labels: productLabels,
+      datasets: [{
+        label: 'Queries',
+        data: productValues,
+        backgroundColor: '#3b82f6',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+      }
+    }
+  });
+
+  // Markets chart
+  const marketLabels = data.marketPrices.map(m => m.location);
+  const marketValues = data.marketPrices.map(m => parseFloat(m.avg_price));
+
+  if (marketsChart) marketsChart.destroy();
+  marketsChart = new Chart(document.getElementById('marketsChart'), {
+    type: 'bar',
+    data: {
+      labels: marketLabels,
+      datasets: [{
+        label: 'Avg Price USD',
+        data: marketValues,
+        backgroundColor: '#7c3aed',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+      }
+    }
+  });
+
+  // Queries table
+  const tbody = document.getElementById('queries-table');
+  if (data.recentQueries.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#64748b">No queries yet — send a WhatsApp message to see live data</td></tr>';
+  } else {
+    tbody.innerHTML = data.recentQueries.map(q => `
+      <tr>
+        <td><span class="badge">+${q.phone_number.slice(-4)}</span></td>
+        <td>${q.product}</td>
+        <td>${q.location}</td>
+        <td>${new Date(q.created_at).toLocaleString()}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+// Load on start + auto refresh every 30 seconds
+loadData();
+setInterval(loadData, 30000);
+</script>
+</body>
+</html>

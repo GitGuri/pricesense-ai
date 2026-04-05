@@ -5,6 +5,8 @@ const { transcribeAudio } = require('./services/gemini');
 const { textToSpeech } = require('./services/voice');
 const { parseMessage } = require('./utils/messageParser');
 const { syncToSheets } = require('./services/sheets');
+const dashboardRouter = require('./routes/dashboard');
+const path = require('path');
 const pool = require('./db');
 require('dotenv').config();
 
@@ -12,6 +14,8 @@ require('dotenv').config();
 
 const app = express();
 app.use(express.json());
+app.use('/dashboard-data', dashboardRouter);
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
@@ -105,3 +109,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 syncToSheets(pool);
 setInterval(() => syncToSheets(pool), 5 * 60 * 1000);
+
