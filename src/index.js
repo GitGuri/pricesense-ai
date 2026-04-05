@@ -45,7 +45,7 @@ app.post('/webhook', async (req, res) => {
     const { product, location } = parseMessage(text);
 
     if (!isVoice) {
-      await sendMessage(from, `⏳ Checking prices for${product} in${location}...`);
+      await sendMessage(from, `⏳ Checking prices for ${product} in ${location}...`);
     }
 
     const reply = await getPriceRecommendation(product, location, from);
