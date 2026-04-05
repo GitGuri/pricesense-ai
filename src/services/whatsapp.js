@@ -43,6 +43,7 @@ async function sendAudioMessage(to, audioBuffer) {
     form.append('messaging_product', 'whatsapp');
     form.append('type', 'audio/mpeg');
 
+    console.log('📤 Uploading audio to Meta...');
     const { data: uploadData } = await axios.post(
       `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/media`,
       form,
@@ -53,6 +54,8 @@ async function sendAudioMessage(to, audioBuffer) {
         }
       }
     );
+
+    console.log('📤 Audio uploaded, media ID:', uploadData.id);
 
     await axios.post(
       `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
@@ -69,10 +72,11 @@ async function sendAudioMessage(to, audioBuffer) {
         }
       }
     );
+
+    console.log('✅ Voice note sent to', to);
   } catch (err) {
     console.error('sendAudioMessage error:', err.response?.status, JSON.stringify(err.response?.data));
     throw err;
   }
 }
-
 module.exports = { sendMessage, downloadMedia, sendAudioMessage };
