@@ -37,7 +37,7 @@ app.post('/webhook', async (req, res) => {
       isVoice = true;
       const { base64, mimeType } = await downloadMedia(msg.audio.id);
       text = await transcribeAudio(base64, mimeType);
-      await sendMessage(from, `🎤 Ndakanzwa: "${text}"\n⏳ Ndiri kutarisa mutengo...`);
+      await sendMessage(from, `🎤 I heard: "${text}"\n⏳ Checking prices...`);
     } else {
       return;
     }
@@ -45,7 +45,7 @@ app.post('/webhook', async (req, res) => {
     const { product, location } = parseMessage(text);
 
     if (!isVoice) {
-      await sendMessage(from, `⏳ Ndiri kutarisa mutengo we${product} mu${location}...`);
+      await sendMessage(from, `⏳ Checking prices for${product} in${location}...`);
     }
 
     const reply = await getPriceRecommendation(product, location, from);
