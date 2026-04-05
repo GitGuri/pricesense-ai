@@ -35,7 +35,6 @@ Based on ALL of the above, tell the vendor:
 2. Restock now? Yes/No and one sentence why
 3. One practical tip for selling this product today
 
-
   `;
 
   const response = await askGemini(prompt);
