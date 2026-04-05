@@ -4,8 +4,11 @@ const { sendMessage, downloadMedia, sendAudioMessage } = require('./services/wha
 const { transcribeAudio } = require('./services/gemini');
 const { textToSpeech } = require('./services/voice');
 const { parseMessage } = require('./utils/messageParser');
+const { syncToSheets } = require('./services/sheets');
 const pool = require('./db');
 require('dotenv').config();
+
+
 
 const app = express();
 app.use(express.json());
@@ -100,3 +103,5 @@ app.get('/', (req, res) => res.send('PriceSense AI is running ✅'));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+syncToSheets(pool);
+setInterval(() => syncToSheets(pool), 5 * 60 * 1000);
