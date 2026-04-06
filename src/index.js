@@ -67,28 +67,83 @@ app.post('/webhook', async (req, res) => {
     }
 
     // ── Registration flow — check FIRST before anything else ──
-    if (text.toLowerCase().trim() === 'register') {
-      await saveMessage(from, 'user', text);
-      await sendMessage(from, `👋 Welcome to PriceSense AI!\n\nReply with your details in this format:\n\n*NAME, PRODUCT, MARKET*\n\nExample: _Tendai, Tomatoes, Mbare_`);
-      return;
-    }
+    // ── Registration flow ──
+if (text.toLowerCase().trim() === 'register') {
+  await saveMessage(from, 'user', text);
+  await saveMessage(from, 'assistant', 'REG_STEP_1');
+  await sendMessage(from, 
+    `👋 Welcome to *PriceSense AI!*\n\nI'll help you get the best prices for your products.\n\nTo register, I just need a few details:\n\n*Your Name:*\n\n_(Reply with your full name)_`
+  );
+  return;
+}
 
-    const { rows: lastMsg } = await pool.query(
-      `SELECT message FROM conversations WHERE phone_number=$1 AND role='assistant' ORDER BY created_at DESC LIMIT 1`,
-      [from]
-    );
-    const lastBotMsg = lastMsg[0]?.message || '';
-    const regMatch = text.match(/^([^,]+),\s*([^,]+),\s*([^,]+)$/);
+// ── Check registration steps ──
+const { rows: lastMsgs } = await pool.query(
+  `SELECT message FROM conversations WHERE phone_number=$1 AND role='assistant' ORDER BY created_at DESC LIMIT 1`,
+  [from]
+);
+const lastBotMsg = lastMsgs[0]?.message || '';
 
-    if (regMatch && lastBotMsg.includes('NAME, PRODUCT, MARKET')) {
-      const [_, name, product, market] = regMatch;
-      await pool.query(
-        `INSERT INTO conversations (phone_number, role, message) VALUES ($1, 'system', $2)`,
-        [from, `VENDOR_PROFILE: name=${name.trim()}, product=${product.trim()}, market=${market.trim()}`]
-      );
-      await sendMessage(from, `✅ Registered!\n\nWelcome *${name.trim()}*! I'll help you with *${product.trim()}* prices in *${market.trim()}*.\n\nSend any product name to get started. 🧠`);
-      return;
-    }
+// Step 1 — got name, ask location
+if (lastBotMsg === 'REG_STEP_1') {
+  await saveMessage(from, 'user', text);
+  await saveMessage(from, 'assistant', `REG_STEP_2|name=${text.trim()}`);
+  await sendMessage(from,
+    `Thanks *${text.trim()}*! 👍\n\n*Your Primary Market Location:*\n\n_(e.g. Mbare, Ruwa, CBD, Chitungwiza)_`
+  );
+  return;
+}
+
+// Step 2 — got location, ask products
+if (lastBotMsg.startsWith('REG_STEP_2')) {
+  await saveMessage(from, 'user', text);
+  await saveMessage(from, 'assistant', `REG_STEP_3|${lastBotMsg.split('|')[1]}|location=${text.trim()}`);
+  await sendMessage(from,
+    `Got it — *${text.trim()}* 📍\n\n*Main Products You Sell:*\n\n_(List all your products e.g: tomatoes, potatoes, eggs, rice, onions)_`
+  );
+  return;
+}
+
+// Step 3 — got products, ask payment
+if (lastBotMsg.startsWith('REG_STEP_3')) {
+  await saveMessage(from, 'user', text);
+  await saveMessage(from, 'assistant', `REG_STEP_4|${lastBotMsg.split('|').slice(1).join('|')}|products=${text.trim()}`);
+  await sendMessage(from,
+    `Perfect! 🛒\n\n*Preferred Payment Method:*\n\n_(EcoCash, Zipit, USD Cash, or multiple)_`
+  );
+  return;
+}
+
+// Step 4 — got payment, save full profile
+if (lastBotMsg.startsWith('REG_STEP_4')) {
+  await saveMessage(from, 'user', text);
+  
+  // Parse all collected data
+  const parts = {};
+  lastBotMsg.split('|').slice(1).forEach(p => {
+    const idx = p.indexOf('=');
+    parts[p.substring(0, idx)] = p.substring(idx + 1);
+  });
+
+  const { name, location, products } = parts;
+  const payment = text.trim();
+
+  // Save vendor profile
+  await pool.query(
+    `INSERT INTO conversations (phone_number, role, message) VALUES ($1, 'system', $2)`,
+    [from, `VENDOR_PROFILE: name=${name}, location=${location}, products=${products}, payment=${payment}`]
+  );
+
+  await sendMessage(from,
+    `✅ *You're registered, ${name}!*\n\n` +
+    `📍 Market: ${location}\n` +
+    `🛒 Products: ${products}\n` +
+    `💳 Payment: ${payment}\n\n` +
+    `You'll now get personalized price advice and daily alerts for all your products.\n\n` +
+    `Just send any product name anytime to get started! 🧠`
+  );
+  return;
+}
 
     // ── Save message to history ──
     await saveMessage(from, 'user', text);
