@@ -115,10 +115,9 @@ if (lastBotMsg.startsWith('REG_STEP_3')) {
 }
 
 // Step 4 — got payment, save full profile
-if (lastBotMsg.startsWith('REG_STEP_4')) {
+if (lastBotMsg.startsWith('REG_STEP_4') && !lastBotMsg.startsWith('REG_COMPLETE')) {
   await saveMessage(from, 'user', text);
   
-  // Parse all collected data
   const parts = {};
   lastBotMsg.split('|').slice(1).forEach(p => {
     const idx = p.indexOf('=');
@@ -128,10 +127,23 @@ if (lastBotMsg.startsWith('REG_STEP_4')) {
   const { name, location, products } = parts;
   const payment = text.trim();
 
-  // Save vendor profile
+  await pool.query(
+    `INSERT INTO vendors (phone_number, name, location, products, payment_method)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (phone_number) DO UPDATE SET
+     name=$2, location=$3, products=$4, payment_method=$5`,
+    [from, name, location, products, payment]
+  );
+
   await pool.query(
     `INSERT INTO conversations (phone_number, role, message) VALUES ($1, 'system', $2)`,
     [from, `VENDOR_PROFILE: name=${name}, location=${location}, products=${products}, payment=${payment}`]
+  );
+
+  // Clear registration state
+  await pool.query(
+    `INSERT INTO conversations (phone_number, role, message) VALUES ($1, 'assistant', $2)`,
+    [from, 'REG_COMPLETE']
   );
 
   await sendMessage(from,
