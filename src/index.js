@@ -66,42 +66,65 @@ app.post('/webhook', async (req, res) => {
       return;
     }
 
-    // Save user message to history
+    // ── Registration flow — check FIRST before anything else ──
+    if (text.toLowerCase().trim() === 'register') {
+      await saveMessage(from, 'user', text);
+      await sendMessage(from, `👋 Welcome to PriceSense AI!\n\nReply with your details in this format:\n\n*NAME, PRODUCT, MARKET*\n\nExample: _Tendai, Tomatoes, Mbare_`);
+      return;
+    }
+
+    const { rows: lastMsg } = await pool.query(
+      `SELECT message FROM conversations WHERE phone_number=$1 AND role='assistant' ORDER BY created_at DESC LIMIT 1`,
+      [from]
+    );
+    const lastBotMsg = lastMsg[0]?.message || '';
+    const regMatch = text.match(/^([^,]+),\s*([^,]+),\s*([^,]+)$/);
+
+    if (regMatch && lastBotMsg.includes('NAME, PRODUCT, MARKET')) {
+      const [_, name, product, market] = regMatch;
+      await pool.query(
+        `INSERT INTO conversations (phone_number, role, message) VALUES ($1, 'system', $2)`,
+        [from, `VENDOR_PROFILE: name=${name.trim()}, product=${product.trim()}, market=${market.trim()}`]
+      );
+      await sendMessage(from, `✅ Registered!\n\nWelcome *${name.trim()}*! I'll help you with *${product.trim()}* prices in *${market.trim()}*.\n\nSend any product name to get started. 🧠`);
+      return;
+    }
+
+    // ── Save message to history ──
     await saveMessage(from, 'user', text);
-
-    // Get conversation history for context
     const history = await getConversationHistory(from);
-
     const parsed = await parseMessage(text, history);
 
+    // ── Only show checking message for text, not voice ──
     if (!isVoice) {
       await sendMessage(from, `⏳ Checking prices for *${parsed.product || 'your query'}* in ${parsed.location || 'Harare'}...`);
     }
 
     const reply = await getPriceRecommendation(parsed, from, history);
-
-    // Save AI reply to history
     await saveMessage(from, 'assistant', reply);
 
-    // Send text reply
-    await sendMessage(from, reply);
-
-    // Send voice reply
-    try {
-      console.log('🎤 Generating voice reply...');
-      const audioBuffer = await textToSpeech(reply);
-      console.log('🎤 Audio generated, size:', audioBuffer.length);
-      await sendAudioMessage(from, audioBuffer);
-      console.log('🎤 Voice reply sent successfully');
-    } catch (voiceErr) {
-      console.error('Voice reply failed:', voiceErr.response?.status, JSON.stringify(voiceErr.response?.data));
+    // ── Text → text reply only ──
+    // ── Voice → voice reply only ──
+    if (isVoice) {
+      try {
+        console.log('🎤 Generating voice reply...');
+        const audioBuffer = await textToSpeech(reply);
+        console.log('🎤 Audio generated, size:', audioBuffer.length);
+        await sendAudioMessage(from, audioBuffer);
+        console.log('🎤 Voice reply sent successfully');
+      } catch (voiceErr) {
+        console.error('Voice reply failed:', voiceErr.response?.status, JSON.stringify(voiceErr.response?.data));
+        // Fallback to text if voice fails
+        await sendMessage(from, reply);
+      }
+    } else {
+      await sendMessage(from, reply);
     }
 
   } catch (err) {
     console.error('Webhook error:', err.message);
   }
 });
-
 
 
 const PORT = process.env.PORT || 3000;
