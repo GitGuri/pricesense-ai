@@ -4,7 +4,6 @@ const { sendMessage, downloadMedia, sendAudioMessage } = require('./services/wha
 const { transcribeAudio } = require('./services/gemini');
 const { textToSpeech } = require('./services/voice');
 const { parseMessage } = require('./utils/messageParser');
-const { syncToSheets } = require('./services/sheets');
 const dashboardRouter = require('./routes/dashboard');
 const path = require('path');
 const pool = require('./db');
@@ -107,6 +106,17 @@ app.post('/webhook', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-syncToSheets(pool);
-setInterval(() => syncToSheets(pool), 5 * 60 * 1000);
+const { sendDailyAlerts } = require('./services/alerts');
+
+// Send daily alerts at 7am every day
+const now = new Date();
+const nextAlert = new Date();
+nextAlert.setHours(7, 0, 0, 0);
+if (now > nextAlert) nextAlert.setDate(nextAlert.getDate() + 1);
+const msUntilAlert = nextAlert - now;
+
+setTimeout(() => {
+  sendDailyAlerts();
+  setInterval(sendDailyAlerts, 24 * 60 * 60 * 1000);
+}, msUntilAlert);
 

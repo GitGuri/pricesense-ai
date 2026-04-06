@@ -45,6 +45,9 @@ IMPORTANT RULES:
 - For compare_markets: tell exactly which market is cheapest to BUY from and best to SELL in.
 - For restock_advice: give YES/NO, where to buy, buy price, and sell price.
 - For price_check: give current price range in that specific market.
+-Payment context: In Zimbabwe, vendors use EcoCash, Zipit, and USD cash. 
+Where relevant, mention which payment method is most common for this product 
+in this market (e.g. "Most vendors in Mbare accept EcoCash for tomatoes").
 
 Use simple English. Max 80 words. End with one practical tip.
   `;
