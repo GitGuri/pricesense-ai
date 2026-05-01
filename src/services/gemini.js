@@ -13,7 +13,7 @@ async function transcribeAudio(audioBase64, mimeType) {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
   const result = await model.generateContent([
     { inlineData: { data: audioBase64, mimeType } },
-    { text: 'Transcribe this audio. Return only the spoken words, nothing else.' }
+    { text: 'This audio is in Shona (ChiShona), a Zimbabwean language. Transcribe exactly what is spoken in Shona. Return only the spoken words, no explanations.' }
   ]);
   return result.response.text();
 }
