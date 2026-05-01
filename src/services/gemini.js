@@ -4,19 +4,30 @@ require('dotenv').config();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 async function askGemini(prompt) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
   const result = await model.generateContent(prompt);
   return result.response.text();
 }
 
 async function transcribeAudio(audioBase64, mimeType) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
   const result = await model.generateContent([
     { inlineData: { data: audioBase64, mimeType } },
-    { text: `Transcribe this audio. It is from a Zimbabwean market vendor speaking Shona (ChiShona) or Zimbabwean English. 
-They are asking about vegetable and grocery prices at specific market locations in Harare (e.g. Mbare, Budiriro, Ruwa, Chitungwiza, CBD).
-Common words they use: tomatoes, potatoes, onions, rice, eggs, sugar, cooking oil, mapotatoes, matamato, anyanisi, mabhora, kuMbare, kuBudiriro, mari, mutengo, kutenga, kutengesa.
-Return only the transcribed words, nothing else.` }
+    { text: `You are transcribing audio from a Zimbabwean market vendor. 
+They speak mixed Shona-English (Shonglish). 
+
+Shona grammar rules:
+- "ari" = "are/is" (present tense prefix)
+- "ari kuita" = "are doing/making" 
+- "mari" = "money/price"
+- "ku" prefix = location (kuBudiriro = at Budiriro)
+- "Ma" prefix = plural (mapotatoes = potatoes)
+
+Example phrases:
+- "Mapotatoes arikuita mari kuBudiriro" = potatoes are expensive at Budiriro
+- "Matamato arikuita sei" = how much are tomatoes
+
+Transcribe EXACTLY what is said, preserving Shona words as-is. Return only the words.` }
   ]);
   return result.response.text();
 }
