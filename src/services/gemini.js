@@ -24,8 +24,8 @@ Shona grammar rules:
 - "Ma" prefix = plural (mapotatoes = potatoes)
 
 Example phrases:
-- "Mapotatoes arikuita mari kuBudiriro" = potatoes are expensive at Budiriro
-- "Matamato arikuita sei" = how much are tomatoes
+- "Mapotatoes arikuita mari kuBudiriro" = How much are potatoes in  Budiriro
+- "Matamato arikuita mari" = how much are tomatoes
 
 Transcribe EXACTLY what is said, preserving Shona words as-is. Return only the words.` }
   ]);
