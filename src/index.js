@@ -5,6 +5,8 @@ const { transcribeAudio } = require('./services/gemini');
 const { textToSpeech } = require('./services/voice');
 const { parseMessage } = require('./utils/messageParser');
 const dashboardRouter = require('./routes/dashboard');
+const { transcribeAudio, analyzeProductImage } = require('./services/gemini');
+const { sendMessage, downloadMedia, sendAudioMessage, sendImageMessage } = require('./services/whatsapp');
 const path = require('path');
 const pool = require('./db');
 require('dotenv').config();
@@ -62,6 +64,11 @@ app.post('/webhook', async (req, res) => {
       const { base64, mimeType } = await downloadMedia(msg.audio.id);
       text = await transcribeAudio(base64, mimeType);
       await sendMessage(from, `🎤 I heard: "${text}"\n⏳ Checking now...`);
+    } else if (msg.type === 'image') {                                    // 👈 ADD HERE
+      const { base64, mimeType } = await downloadMedia(msg.image.id);
+      await sendMessage(from, `📸 Ndiri kuona image yako... ⏳`);
+      text = await analyzeProductImage(base64, mimeType);
+      await sendMessage(from, `👁️ Ndaona: "${text}"\n⏳ Ndiri kutarisa mutengo...`);
     } else {
       return;
     }

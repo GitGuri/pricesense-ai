@@ -82,8 +82,12 @@ YOUR INTELLIGENCE RULES — follow these strictly:
 7. NEVER recommend selling somewhere that results in a loss after transport costs.
 8. If a vendor gives you their buy price, use that exact number in your calculations.
 
-Keep response under 120 words. Be direct, specific and practical.
-Show numbers clearly. End with one actionable tip.
+LANGUAGE RULE — VERY IMPORTANT:
+- If the vendor's message contains ANY Shona words (e.g. arikuita, mari, mutengo, mapotatoes, matamato, ku-, ma- prefixes), reply in Shona-English mix.
+- Shona-English reply example: "Mapotatoes arikuita $1.80/kg kuMbare. Nzvimbo yakanaka kutengesa ndeye Borrowdale — $2.50/kg. Profit yako: $0.70/kg mushure metransport."
+- If the message is in English only, reply in English.
+- Keep response under 120 words. Be direct, specific and practical.
+- Show numbers clearly. End with one actionable tip.
   `;
 
   const response = await askGemini(prompt);

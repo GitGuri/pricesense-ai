@@ -4,7 +4,6 @@ const { askGemini } = require('./gemini');
 
 async function sendDailyAlerts() {
   try {
-    // Get all registered vendors
     const { rows: vendors } = await pool.query(`
       SELECT DISTINCT phone_number, message 
       FROM conversations 
@@ -15,14 +14,19 @@ async function sendDailyAlerts() {
       const profile = vendor.message.replace('VENDOR_PROFILE: ', '');
       const parts = {};
       profile.split(',').forEach(p => {
-        const [k, v] = p.split('=');
-        parts[k.trim()] = v.trim();
+        const trimmed = p.trim();
+        const idx = trimmed.indexOf('=');
+        if (idx !== -1) {
+          parts[trimmed.substring(0, idx).trim()] = trimmed.substring(idx + 1).trim();
+        }
       });
 
-      const { name, product, market } = parts;
-      if (!product || !market) continue;
+      const { name, products, location } = parts;
+      if (!products || !location) continue;
 
-      // Get latest avg price vs yesterday
+      // Handle multiple products — alert on first one
+      const primaryProduct = products.split(/[,\/]/)[0].trim();
+
       const { rows: prices } = await pool.query(`
         SELECT 
           ROUND(AVG(CASE WHEN recorded_at >= NOW() - INTERVAL '1 day' THEN price END)::numeric, 2) as today,
@@ -30,29 +34,39 @@ async function sendDailyAlerts() {
                     AND recorded_at >= NOW() - INTERVAL '2 days' THEN price END)::numeric, 2) as yesterday
         FROM market_prices
         WHERE product ILIKE $1 AND location ILIKE $2
-      `, [product, market]);
+      `, [primaryProduct, location]);
 
       const { today, yesterday } = prices[0];
       if (!today || !yesterday) continue;
 
       const change = ((today - yesterday) / yesterday * 100).toFixed(1);
-      const direction = change > 0 ? '📈 UP' : '📉 DOWN';
+      const direction = parseFloat(change) > 0 ? '📈 UP' : '📉 DOWN';
+      const arrow = parseFloat(change) > 0 ? '⬆️' : '⬇️';
 
-      if (Math.abs(change) < 3) continue; // only alert on significant changes
+      if (Math.abs(change) < 3) continue;
 
       const prompt = `
-You are PriceSense AI sending a daily price alert to ${name}, a vendor selling ${product} in ${market}, Zimbabwe.
+You are PriceSense AI sending a daily price alert to ${name}, a Zimbabwean vendor selling ${primaryProduct} in ${location}.
 
-Yesterday's price: $${yesterday}
-Today's price: $${today}
+Yesterday's price: $${yesterday}/kg
+Today's price: $${today}/kg
 Change: ${direction} ${Math.abs(change)}%
 
-Write a short, friendly WhatsApp alert (max 50 words) telling them about this price change and one quick action they should take today. Be direct and practical.
+Write a short WhatsApp alert in Shona-English mix (max 50 words).
+Start with "Mangwanani ${name}! 🌅"
+Tell them the price change and one quick action for today.
+Use Shona words naturally: mutengo, kutenga, kutengesa, zvakawanda, zvakanaka, chipa.
       `;
 
       const alert = await askGemini(prompt);
-      await sendMessage(vendor.phone_number, `🔔 *Daily Price Alert*\n\n${alert}`);
-      console.log(`✅ Alert sent to ${vendor.phone_number} for ${product}`);
+
+      const message = 
+        `🔔 *PriceSense — Mutengo Wanhasi*\n\n` +
+        `${alert}\n\n` +
+        `📊 ${primaryProduct}: $${yesterday} → $${today}/kg ${arrow} ${Math.abs(change)}%`;
+
+      await sendMessage(vendor.phone_number, message);
+      console.log(`✅ Alert sent to ${vendor.phone_number} for ${primaryProduct}`);
     }
   } catch (err) {
     console.error('Alert error:', err.message);
