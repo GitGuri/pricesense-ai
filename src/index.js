@@ -6,14 +6,14 @@ const { textToSpeech } = require('./services/voice');
 const { parseMessage } = require('./utils/messageParser');
 const dashboardRouter = require('./routes/dashboard');
 const { analyzeProductImage } = require('./services/gemini');
-const { sendMessage, downloadMedia, sendAudioMessage, sendImageMessage } = require('./services/whatsapp');
+const { sendImageMessage } = require('./services/whatsapp');
 const path = require('path');
 const pool = require('./db');
 require('dotenv').config();
 
 
 
-const app = express();
+const app = express(); 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/dashboard-data', dashboardRouter);
