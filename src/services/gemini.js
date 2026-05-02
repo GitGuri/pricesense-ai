@@ -51,4 +51,4 @@ If this is not a market or food image, say "I can only analyse market produce im
   ]);
   return result.response.text();
 }
-module.exports = { askGemini, transcribeAudio };
+module.exports = { askGemini, transcribeAudio, analyzeProductImage };
